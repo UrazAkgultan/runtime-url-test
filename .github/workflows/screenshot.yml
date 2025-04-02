@@ -53,7 +53,7 @@ jobs:
         adb pull /sdcard/screenshot.png ./screenshot.png
         
     - name: Upload screenshot
-      uses: github/codeql-action/upload-artifact@v2
+      uses: actions/upload-artifact@v1
       with:
         name: screenshot
         path: screenshot.png 
