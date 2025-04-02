@@ -1,0 +1,59 @@
+name: Take Screenshots
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  take-screenshots:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v2
+      
+    - name: Create Android Virtual Device
+      run: |
+        echo "no" | sdkmanager "system-images;android-30;google_apis;x86_64"
+        echo "no" | sdkmanager --licenses
+        echo "no" | avdmanager create avd -n test_device -k "system-images;android-30;google_apis;x86_64" -d "pixel_2"
+        
+    - name: Start Web Server
+      run: npm start &
+      
+    - name: Wait for server to start
+      run: sleep 10
+      
+    - name: Start emulator and take screenshot
+      run: |
+        emulator -avd test_device -no-window -no-audio -no-boot-anim -no-snapshot &
+        adb wait-for-device
+        adb shell am start -a android.intent.action.VIEW -d "http://10.0.2.2:3000"
+        sleep 30
+        adb shell screencap -p /sdcard/screenshot.png
+        adb pull /sdcard/screenshot.png ./screenshot.png
+        
+    - name: Upload screenshot
+      uses: actions/upload-artifact@v3
+      with:
+        name: screenshot
+        path: screenshot.png 
