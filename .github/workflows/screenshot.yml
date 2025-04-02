@@ -52,8 +52,28 @@ jobs:
         adb shell screencap -p /sdcard/screenshot.png
         adb pull /sdcard/screenshot.png ./screenshot.png
         
-    - name: Upload screenshot
-      uses: actions/upload-artifact@v1
-      with:
-        name: screenshot
-        path: screenshot.png 
+    - name: Upload screenshot using GitHub API
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Convert screenshot to base64
+        SCREENSHOT_BASE64=$(base64 -w 0 screenshot.png)
+        
+        # Create a release asset using GitHub API
+        curl -X POST \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"tag_name\": \"screenshot-${{ github.run_number }}\",
+            \"name\": \"Screenshot ${{ github.run_number }}\",
+            \"body\": \"Screenshot taken on ${{ github.event.repository.name }} at ${{ github.event.head_commit.timestamp }}\"
+          }" \
+          "https://api.github.com/repos/${{ github.repository }}/releases"
+        
+        # Upload the screenshot as a release asset
+        curl -X POST \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary "@screenshot.png" \
+          "https://uploads.github.com/repos/${{ github.repository }}/releases/screenshot-${{ github.run_number }}/assets?name=screenshot.png" 
